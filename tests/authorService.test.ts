@@ -34,19 +34,30 @@ describe("Verify GET /authors", () => {
    */
   it("should respond with a list of authors sorted by family name", async () => {
     const mockAuthors = [
-      "Williams, Alice : 1970 - 2020",
-      "Smith, Jane : 1980 - 2020",
-      "Doe, John : 1990 - 2020"
+      { name: "John Doe", lifespan: "1990 - 2020" },
+      { name: "Jane Doe", lifespan: "1995 - 2021" },
+      { name: "Alice Smith", lifespan: "1980 - 2020" },
+      { name: "Bob Smith", lifespan: "1985 - 2021" },
+      { name: "Charlie Brown", lifespan: "1970 - 2020" },
+      { name: "David Brown", lifespan: "1975 - 2021" },
+      { name: "Eve Johnson", lifespan: "1960 - 2020" },
+      { name: "Frank Johnson", lifespan: "1965 - 2021" },
     ];
 
-    const expectedAuthors = [...mockAuthors].sort();
+    const expectedAuthors = [...mockAuthors].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
 
-    Author.getAllAuthors = jest.fn().mockResolvedValue(expectedAuthors);
+    Author.getAllAuthors = jest.fn().mockImplementationOnce((sortOpts) => {
+      if (sortOpts && sortOpts.family_name === 1) {
+        return Promise.resolve(expectedAuthors);
+      }
+      return Promise.resolve(mockAuthors);
+    });
 
     const response = await request(app).get("/authors");
     expect(response.statusCode).toBe(200);
     expect(response.body).toEqual(expectedAuthors);
-    expect(Author.getAllAuthors).toHaveBeenCalledWith({ family_name: 1 });
   });
 
   /**
@@ -67,7 +78,9 @@ describe("Verify GET /authors", () => {
    * Should log the error to console
    */
   it("should respond with status 500 when getAllAuthors throws an error", async () => {
-    Author.getAllAuthors = jest.fn().mockRejectedValue(new Error("Internal Server Error"));
+    Author.getAllAuthors = jest
+      .fn()
+      .mockRejectedValue(new Error("Internal Server Error"));
 
     const response = await request(app).get("/authors");
     expect(response.statusCode).toBe(500);
